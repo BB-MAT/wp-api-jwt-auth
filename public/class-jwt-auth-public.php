@@ -77,10 +77,20 @@ class Jwt_Auth_Public
             'callback' => array($this, 'generate_token'),
         ));
 
+	    register_rest_route($this->namespace, 'token_jwt', array(
+		    'methods' => 'GET',
+		    'callback' => array($this, 'generate_token'),
+	    ));
+
         register_rest_route($this->namespace, 'token/validate', array(
             'methods' => 'POST',
             'callback' => array($this, 'validate_token'),
         ));
+
+	    register_rest_route($this->namespace, 'token/validate_jwt', array(
+		    'methods' => 'GET',
+		    'callback' => array($this, 'validate_token'),
+	    ));
     }
 
     /**
@@ -234,6 +244,15 @@ class Jwt_Auth_Public
         }
 
         if (!$auth) {
+	        $auth = isset($_REQUEST['jwt']) ? $_REQUEST['jwt'] : false;
+
+	        if ($auth)
+	        {
+	        	$auth = "Bearer " . $auth;
+	        }
+        }
+
+        if (!$auth) {
             return new WP_Error(
                 'jwt_auth_no_auth_header',
                 'Authorization header not found.',
@@ -273,6 +292,15 @@ class Jwt_Auth_Public
         /** Try to decode the token */
         try {
             $token = JWT::decode($token, $secret_key, array('HS256'));
+
+            if (isset($token->id))
+            {
+            	$token->data = new stdClass();
+            	$token->data->user = new stdClass();
+            	$token->data->user->id = $token->id;
+	            $token->iss = get_bloginfo('url');
+            }
+
             /** The Token is decoded now validate the iss */
             if ($token->iss != get_bloginfo('url')) {
                 /** The iss do not match, return error */
